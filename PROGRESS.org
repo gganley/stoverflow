@@ -3,3 +3,6 @@
 - Move back to cbox since you can't detect what is selected in the table
 - Can't recreate objects in cbox so moving to qt
 - Had to install qt 5.11.1 instaed of the current 5.12.0 to work with therecipe/qt library
+* Notes
+- `qtdeploy -fast build desktop; ./deploy/darwin/stoverflow.app/Contents/MacOS/stoverflow` will allow for debug output
+- qtdeploy -fast only works on unclean projects

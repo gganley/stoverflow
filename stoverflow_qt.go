@@ -1,4 +1,4 @@
-package stoverflow
+package main
 
 import (
 	"fmt"
@@ -7,14 +7,28 @@ import (
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/quick"
 	"github.com/therecipe/qt/widgets"
+	"github.com/sirupsen/logrus"
+	sd "github.com/gganley/stoverflow_data"
+	"strings"
 )
 
-func init() { CustomListModel_QmlRegisterType2("CustomQmlTypes", 1, 0, "CustomListModel") }
-
-type ListItem struct {
-	firstName string
-	lastName  string
+var Log = logrus.New()
+func init() {
+	CustomListModel_QmlRegisterType2("CustomQmlTypes", 1, 0, "CustomListModel")
+	Log.Out = os.Stderr
+	Log.Level = logrus.InfoLevel
 }
+
+// type ListItem struct {
+// 	firstName string
+// 	lastName  string
+// }
+// type Job struct {
+// 	company_name string
+// 	publish_date string
+// 	location string
+// 	tags []string
+// }
 
 type CustomListModel struct {
 	core.QAbstractListModel
@@ -23,13 +37,13 @@ type CustomListModel struct {
 
 	_ func()                                  `signal:"remove,auto"`
 	_ func(obj []*core.QVariant)              `signal:"add,auto"`
-	_ func(firstName string, lastName string) `signal:"edit,auto"`
-
-	modelData []ListItem
+	_ func(company_name, publish_date, location string, tags []string) `signal:"edit,auto"`
+	_ func(item *core.QVariant) `signal:"change,auto"`
+	modelData []sd.Job
 }
 
 func (m *CustomListModel) init() {
-	m.modelData = []ListItem{{"john", "doe"}, {"john", "bob"}}
+	m.modelData = sd.GetData([]string{})
 
 	m.ConnectRowCount(m.rowCount)
 	m.ConnectData(m.data)
@@ -45,7 +59,7 @@ func (m *CustomListModel) data(index *core.QModelIndex, role int) *core.QVariant
 	}
 
 	item := m.modelData[index.Row()]
-	return core.NewQVariant14(fmt.Sprintf("%v %v", item.firstName, item.lastName))
+	return core.NewQVariant14(fmt.Sprintf("%v %v %v %v", item.CompanyName, item.PublishDate, item.Location, item.Tags))
 }
 
 func (m *CustomListModel) remove() {
@@ -59,16 +73,25 @@ func (m *CustomListModel) remove() {
 
 func (m *CustomListModel) add(item []*core.QVariant) {
 	m.BeginInsertRows(core.NewQModelIndex(), len(m.modelData), len(m.modelData))
-	m.modelData = append(m.modelData, ListItem{item[0].ToString(), item[1].ToString()})
+	m.modelData = append(m.modelData, sd.Job{item[0].ToString(), item[1].ToString(), item[2].ToString(), item[3].ToStringList()})
 	m.EndInsertRows()
 }
 
-func (m *CustomListModel) edit(firstName string, lastName string) {
+func (m *CustomListModel) edit(company_name, publish_date, location string, tags []string) {
 	if len(m.modelData) == 0 {
 		return
 	}
-	m.modelData[len(m.modelData)-1] = ListItem{firstName, lastName}
+	m.modelData[len(m.modelData)-1] = sd.Job{company_name, publish_date, location, tags}
 	m.DataChanged(m.Index(len(m.modelData)-1, 0, core.NewQModelIndex()), m.Index(len(m.modelData)-1, 0, core.NewQModelIndex()), []int{int(core.Qt__DisplayRole)})
+}
+
+func (m *CustomListModel) change(item *core.QVariant) {
+	spliced_tags := strings.Split(item.ToString(), ",")
+	Log.Info(fmt.Sprintf("%+v\n", spliced_tags))
+	jobdata := sd.GetData(spliced_tags)
+	m.BeginResetModel()
+	m.modelData = jobdata
+	m.EndResetModel()
 }
 
 func main() {
